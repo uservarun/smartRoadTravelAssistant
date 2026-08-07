@@ -65,19 +65,27 @@ public class AuthService {
     }
 
     public User loginUser(AuthRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Invalid email or password"));
+        User user = null;
+        if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
+            user = userRepository.findByEmail(request.getEmail()).orElse(null);
+        }
+        if (user == null && request.getUsername() != null && !request.getUsername().trim().isEmpty()) {
+            user = userRepository.findByUsername(request.getUsername()).orElse(null);
+        }
+
+        if (user == null) {
+            throw new RuntimeException("Invalid email/username or password");
+        }
 
         if (!user.getIsVerified()) {
             throw new RuntimeException("Please verify your email address first.");
         }
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new RuntimeException("Invalid email or password");
+            throw new RuntimeException("Invalid email/username or password");
         }
 
         return user;
-
     }
     private boolean isDisposableEmail(String email) {
         if (email == null || !email.contains("@")) return false;
