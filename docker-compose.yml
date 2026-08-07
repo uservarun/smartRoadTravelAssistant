@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  # 1. Local Postgres + PostGIS Database Service (for offline testing)
+  db:
+    image: postgis/postgis:15-3.3
+    container_name: roadsathi-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_dev_password # Generic developer password
+      POSTGRES_DB: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 2. RoadSathi Spring Boot Application Service
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: roadsathi-app
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Inject local DB configuration automatically
+      DB_URL: jdbc:postgresql://db:5432/postgres
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres_dev_password # Matches local dev db
+      # Load other API credentials from your local system shell/environment
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      BREVO_SMTP_USERNAME: ${BREVO_SMTP_USERNAME}
+      BREVO_SMTP_PASSWORD: ${BREVO_SMTP_PASSWORD}
+      BREVO_SENDER_EMAIL: ${BREVO_SENDER_EMAIL}
+
+volumes:
+  pgdata:
